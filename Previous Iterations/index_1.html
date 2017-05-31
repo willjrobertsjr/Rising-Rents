@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="http://dimplejs.org/dist/dimple.v2.0.0.min.js"></script>
+
+  <style type="text/css">
+
+  </style>
+
+  <script type="text/javascript">
+    function draw(data) {
+
+      var uniqueStates = [ ];
+      var stateObj = {};
+      // loop over every object in the array 'data'
+      // 'd' is each object
+      data.forEach( function( d ) {
+        // if the array 'uniqueStates' doesn't include
+        // the state in the current object, add it to 'uniqueStates'
+        if( !uniqueStates.includes( d.State ) ) {
+          uniqueStates.push( d.State );
+        }
+        // if a key for the current state doesn't exist
+        // create the key and set the value as an empty array
+        // add the current city to the new array
+        if( !stateObj[ d.State ] ) {
+          stateObj[ d.State ] = [ ]
+          stateObj[ d.State ].push( d.City )
+        } else {
+          // if the list for the current state doesn't include
+          // the current city add it
+          if( !stateObj[ d.State ].includes( d.City ) ) {
+            stateObj[ d.State ].push( d.City )
+          }
+        }
+      } );
+
+      // sort the states array
+      uniqueStates.sort( );
+
+    /*
+      D3.js setup code
+    */
+
+        "use strict";
+        var width = 900,
+            height = 500,
+            rightBar = width/8,
+            legendheight = height/4;
+
+        d3.select("body")
+          .append("h2")
+          .text("Zillow")
+
+        var svg = d3.select("body")
+          .append("svg")
+            .attr("width", width)
+            .attr("height", height)
+          .append('g')
+              .attr('class','chart');
+
+        //Create right side of the chart and color bars
+        var indicator = new dimple.chart(svg, data);
+        var defaultColor = indicator.defaultColors[0];
+        var indicatorColor = indicator.defaultColors[2];
+
+        //Frame duration
+        var frame = 9000;
+        var firstTick = true;
+
+        //Set bounds for indicator : CHANGE THIS AS IT LOOKS WEIRD
+        indicator.setBounds(434, 49, 153, 311)
+
+        //Add States
+        var y = indicator.addCategoryAxis('y', 'State');
+        y.addOrderRule('State', 'desc');
+
+        //Change Bar Length by Avg Population Rank
+        var x = indicator.addMeasureAxis('x', 'Population Rank')
+        x.hidden = true;
+
+        //Add series and aggregate Pop Rank by Average
+        var side = indicator.addSeries('State', dimple.plot.bar);
+        side.aggregate = dimple.aggregateMethod.avg;
+        side.addEventHandler('click', onClick);
+
+        //Draw the Chart
+        indicator.draw()
+
+        //Move y axis text into bars
+        y.shapes.selectAll('text')
+          .style('text-anchor', 'start')
+          .style('font-size', '10px')
+          .attr('transform', 'translate(18, 0.5)');
+
+        //Remove y title and lines
+        y.titleShape.remove();
+        y.shapes.selectAll('line, path').remove();
+
+        //Add legend title for indicator to instruct how to use bars. CHANGE TO LOOK BETTER.
+        svg.selectAll('title_text')
+          .data(['Click to Choose State.'])
+          .enter()
+          .append('text')
+          .attr('x', 435)
+          .attr('y', function (d, i) { return 15 + i * 12; })
+          .style('font-family', 'sans-serif')
+          .style('font-size', '10px')
+          .style('color', 'Black')
+          .text(function (d) {return d; });
+
+        //Set the bar colors to inicator and default
+        side.shapes
+                  .attr('rx', 10)
+                  .attr('ry', 10)
+                  .style('fill', function (d) {return (d.y === 'AL' ?
+                        indicatorColor.fill : defaultColor.fill) })
+                  .style('stroke', function (d) {return (d.y === 'AL' ?
+                        indicatorColor.stroke : defaultColor.stroke) })
+                  .style('opacity', 0.3)
+
+        //Main Chart Configuration
+        var myChart = new dimple.chart(svg, data);
+        myChart.setBounds(50, 50, 355, 310)
+        var xMain = myChart.addTimeAxis('x', 'variable', '%B %Y');
+        myChart.addMeasureAxis('y', 'value');
+        xMain.tickFormat = '%Y';
+        myChart.addSeries('City', dimple.plot.line);
+        myChart.addLegend(60, 10, 410, 60);
+
+        //Add City legend
+        //svg.selectAll('cityLegendLabel')
+          //.data(['City: '])
+          //.enter()
+          //.append('text')
+            //.attr('x', 20)
+            //.attr('y', 90)
+            //.style('font-size', '13px')
+            //.style('font-weight', 'bold')
+            //.style('color', 'Black')
+            //.style('font-family', 'sans-serif')
+            //.text(function (d) {return d; });
+
+        //City legend added
+        //var myCityLegend = myChart.addLegend(85, 75, rightBar * 4, legendheight, "left");
+
+        //Add storyboard to main
+        var story = myChart.setStoryboard('State', onTick);
+
+        //Set Frame duration
+        story.frameDuration = frame + 2000;
+
+        //Draw Main chart
+        myChart.draw();
+
+        //LOOK AT THIS IF LEGEND IS NOT SHOWING
+        //myChart.legends = [];
+        //story.storyLabel.attr("x", 0);
+        story.storyLabel.remove();
+
+        //Side chart click
+        function onClick(e) {
+          story.pauseAnimation();
+          if(e.yValue === story.getFrameValue()) {
+            story.startAnimation();
+            isticking = true;
+          } else {
+            story.goToFrame(e.yValue);
+            story.pauseAnimation();
+            isticking = false;
+          }
+        }
+
+        //Main Chart storyboard tick changes to side
+        function onTick(e) {
+          if (!firstTick) {
+            side.shapes
+              .transition()
+              .duration(frame / 2)
+              .style('fill', function (d) { return (d.y === e ? indicatorColor.fill : defaultColor.fill) })
+              .style('stroke', function (d) { return (d.y === e ? indicatorColor.stroke : defaultColor.stroke) })
+          }
+          firstTick = false;
+        }
+      };
+  </script>
+</head>
+<body>
+  <script type = 'text/javascript'>
+  /*
+    Use D3 (not dimple.js) to load the TSV file
+    and pass the contents of it to the draw function
+    */
+  d3.csv('tophundreddraw.csv', draw);
+  </script>
+</body>
+</html>
