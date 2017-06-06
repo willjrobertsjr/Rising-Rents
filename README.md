@@ -1,4 +1,4 @@
-#Study of the rising rent costs for the US housing market from 2012-2017.
+# Study of the rising rent costs for the US housing market from 2012-2017.
 
 The dataset for this study comes from a data set released by Zillow containing monthly average rent costs in American cities.  The study uses a subset of that data, namely major cities.  A percent change statistic was calculated for each city to show the rise or fall in rent costs from January 2012 to January 2017.
 
